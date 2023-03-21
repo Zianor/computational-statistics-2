@@ -1,4 +1,5 @@
 .venv
+complete_enumeration_corrcoefs.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
