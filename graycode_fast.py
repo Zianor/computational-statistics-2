@@ -5,7 +5,7 @@ from scipy.stats import multinomial
 import random
 from tqdm import tqdm
 import itertools
-data = pd.read_csv("law.csv")[:5]
+data = pd.read_csv("law.csv")
 
 from math import factorial
 
