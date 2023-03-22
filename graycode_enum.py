@@ -9,42 +9,62 @@ data = pd.read_csv("law.csv")
 from math import factorial
 
 def gray_code_composition(n):
-    """N-W algorithm to run through the compositions
-    """
     length = int(factorial(2*n-1)/(factorial(n-1)*factorial(2*n-1-(n-1))))
-    gray_codes = np.zeros((length, n))
-    pbar = tqdm(total=length)
+    compositions = np.zeros((length, n))
 
     # first combination
     curr = np.zeros(n)
     curr[0] = n
-    gray_codes[0, :] = curr
+    compositions[0, :] = curr
+    p = 0
+    pos=1
 
-    value_first_nonzero = n
-    i = 1
     while (curr[n-1] != n): # we are done once n is in last
-        pbar.update(1)
-        if value_first_nonzero != 1:
-            first_nonzero = 0
+        if p == 0:
+            if np.count_nonzero(curr) > 1:
+                b = np.flatnonzero(curr)[1]
+            else:
+                b=0
+            if b == 1:
+                if curr[0] == 1:
+                    p = 1
+            elif (n - curr[0]) % 2 == 0:
+                d, i, p = 0, 1, 1
+            elif curr[b] % 2 == 1:
+                d, i, p = 0, b, b
+            else:
+                i, d = 0, b
         else:
-            first_nonzero += 1
-        value_first_nonzero = curr[first_nonzero]
-        curr[first_nonzero] = 0
-        curr[0] = value_first_nonzero - 1
-        curr[first_nonzero+1] = curr[first_nonzero+1] +1
-        gray_codes[i, :] = curr
-        i += 1
-    return gray_codes
+            if (n - curr[p]) % 2 == 1:
+                d, i = p, p-1
+                if curr[p] % 2 == 0:
+                    i = 0
+                p = i
+            elif curr[p+1] % 2 == 0:
+                i, d = p+1, p
+                if curr[p] == 1:
+                    p= p+1
+            else:
+                i, d = p, p+1
+        curr[i] +=1
+        curr[d] -= 1
+        if curr[0] > 0:
+            p=0
+        compositions[pos] = curr
+        pos += 1
+    return compositions
 
 
 n = data.shape[0]
 graycodes = gray_code_composition(n)
 
+data = data.values
+
 corrs = []
+
 for graycode in tqdm(graycodes):
-    lsat_sample = list(itertools.chain(*[[data.iloc[i]['LSAT']]*int(g) for i, g in enumerate(graycode)]))
-    gpa_sample = list(itertools.chain(*[[data.iloc[i]['GPA']]*int(g) for i, g in enumerate(graycode)]))
-    corr = np.corrcoef(lsat_sample, gpa_sample)[0][1]
+    indices = list(itertools.chain(*[[i]*int(g) for i, g in enumerate(graycode)]))
+    corr = np.corrcoef(data[indices].T)[0][1]
     corrs.append(corr)
 
 

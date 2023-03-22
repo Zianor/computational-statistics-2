@@ -10,34 +10,52 @@ data = pd.read_csv("law.csv")
 from math import factorial
 
 def gray_code_composition(n: int, save:bool=False) -> np.ndarray:
-    """N-W algorithm to run through the compositions
-    """
     length = int(factorial(2*n-1)/(factorial(n-1)*factorial(2*n-1-(n-1))))
-    gray_codes = np.zeros((length, n))
-    pbar = tqdm(total=length)
+    compositions = np.zeros((length, n))
 
     # first combination
     curr = np.zeros(n)
     curr[0] = n
-    gray_codes[0, :] = curr
+    compositions[0, :] = curr
+    p = 0
+    pos=1
 
-    value_first_nonzero = n
-    i = 1
     while (curr[n-1] != n): # we are done once n is in last
-        pbar.update(1)
-        if value_first_nonzero != 1:
-            first_nonzero = 0
+        if p == 0:
+            if np.count_nonzero(curr) > 1:
+                b = np.flatnonzero(curr)[1]
+            else:
+                b=0
+            if b == 1:
+                if curr[0] == 1:
+                    p = 1
+            elif (n - curr[0]) % 2 == 0:
+                d, i, p = 0, 1, 1
+            elif curr[b] % 2 == 1:
+                d, i, p = 0, b, b
+            else:
+                i, d = 0, b
         else:
-            first_nonzero += 1
-        value_first_nonzero = curr[first_nonzero]
-        curr[first_nonzero] = 0
-        curr[0] = value_first_nonzero - 1
-        curr[first_nonzero+1] = curr[first_nonzero+1] +1
-        gray_codes[i, :] = curr
-        i += 1
+            if (n - curr[p]) % 2 == 1:
+                d, i = p, p-1
+                if curr[p] % 2 == 0:
+                    i = 0
+                p = i
+            elif curr[p+1] % 2 == 0:
+                i, d = p+1, p
+                if curr[p] == 1:
+                    p= p+1
+            else:
+                i, d = p, p+1
+        curr[i] +=1
+        curr[d] -= 1
+        if curr[0] > 0:
+            p=0
+        compositions[pos] = curr
+        pos += 1
     if save:
-        np.save("gray_codes.npy", gray_codes)
-    return gray_codes
+        np.save("gray_codes.npy", compositions)
+    return compositions
 
 
 n = data.shape[0]
@@ -45,26 +63,23 @@ n = data.shape[0]
 # graycodes = gray_code_composition(n, True)
 graycodes = np.load("gray_codes.npy")
 
-lsat_mean = np.mean(data['LSAT'])
-gpa_mean = np.mean(data['GPA'])
-
-correlation = data['LSAT'] * data['GPA']
-lsat_square = (data['LSAT'] - lsat_mean)**2
-gpa_square = (data['GPA'] - gpa_mean)**2
-
-calc_cor = np.zeros((graycodes.shape[0], 2))
-
+correlations = data['LSAT'] * data['GPA']
+lsat_square = data['LSAT']**2
+gpa_square = data['GPA']**2
 
 corrs = []
-mltn = multinomial(n, [1/n]*n) 
-for i, graycode in tqdm(enumerate(graycodes), total=graycodes.shape[0]):
-    calc_cor[i, 0] = (np.dot(graycode, correlation) - 
-                      (np.sum(graycode*data['LSAT'])*np.sum(graycode*data['GPA']))/n)
-    calc_cor[i, 0] = calc_cor[i, 0]/((np.dot(graycode, lsat_square))*(np.dot(graycode, gpa_square)))
 
-    # calculate probability of graycode for later weighting
-    calc_cor[i, 1] = mltn.pmf(graycode.astype(np.int32))
+for graycode in tqdm(graycodes, total=graycodes.shape[0]):
+    # formula 
+    # numerator n* sum (xi*yi) - sum(x)*sum(y)
+    curr_x = np.sum(graycode*data['LSAT'])
+    curr_y = np.sum(graycode*data['GPA'])
+    corr = n*np.sum(np.dot(graycode, correlations)) - curr_x*curr_y
+    # denominator
+    # sqrt(n* sum (x_square)-sum(x)**2) * sqrt(n*sum(y_square)-sum(y)**2)
+    corr = corr/(np.sqrt(n* np.sum(np.dot(graycode, lsat_square))-curr_x**2)*np.sqrt(n * np.sum(np.dot(graycode, gpa_square))-curr_y**2))
+    corrs.append(corr)
 
 
 # save 
-np.save("graycode_enumeration_corrcoefs.npy", calc_cor)
+np.save("graycode_enumeration_corrcoefs.npy", np.array(corrs))
