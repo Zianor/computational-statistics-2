@@ -43,7 +43,7 @@ graycodes = gray_code_composition(n)
 corrs = []
 for graycode in tqdm(graycodes):
     lsat_sample = list(itertools.chain(*[[data.iloc[i]['LSAT']]*int(g) for i, g in enumerate(graycode)]))
-    gpa_sample = list(itertools.chain(*[[data.iloc[i]['LSAT']]*int(g) for i, g in enumerate(graycode)]))
+    gpa_sample = list(itertools.chain(*[[data.iloc[i]['GPA']]*int(g) for i, g in enumerate(graycode)]))
     corr = np.corrcoef(lsat_sample, gpa_sample)[0][1]
     corrs.append(corr)
 
